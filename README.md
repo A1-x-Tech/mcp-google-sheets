@@ -3,8 +3,8 @@
 **English** | [Русский](./README.ru.md)
 
 [![npm](https://img.shields.io/npm/v/%40a1-x-tech%2Fmcp-google-sheets)](https://www.npmjs.com/package/@a1-x-tech/mcp-google-sheets)
-[![CI](https://github.com/A1-x-Tech/mcp-google-sheets/actions/workflows/ci.yml/badge.svg)](https://github.com/A1-x-Tech/mcp-google-sheets/actions/workflows/ci.yml)
 [![Glama](https://glama.ai/mcp/servers/A1-x-Tech/mcp-google-sheets/badges/score.svg)](https://glama.ai/mcp/servers/A1-x-Tech/mcp-google-sheets)
+[![CI](https://github.com/A1-x-Tech/mcp-google-sheets/actions/workflows/ci.yml/badge.svg)](https://github.com/A1-x-Tech/mcp-google-sheets/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 **A1 Google Sheets MCP** lets an AI app work with Google Sheets in plain language. Find a spreadsheet, read its data, write and append rows, shape sheets and formatting, build charts and share the result.
