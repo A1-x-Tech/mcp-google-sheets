@@ -11,7 +11,8 @@
 
 It uses the Google Sheets API with your Google account. It separates reading from writing, keeps destructive operations explicit and makes the limits of the Sheets API clear instead of implying that every spreadsheet task is possible.
 
-- **20 tools.** Search and create spreadsheets, read and write ranges, manage sheets, formatting, data validation, protected ranges, conditional formats, structured tables, charts and access.
+- **26 tools.** Search and create spreadsheets, read and write ranges, manage sheets, formatting, data validation, protected ranges, conditional formats, structured tables, charts and access.
+- **Connects from the conversation.** Say "connect Google Sheets": the server walks you through the OAuth client, catches Google's redirect on `127.0.0.1` with PKCE and keeps the tokens itself — no config files, no restart.
 - **Writes are deliberate.** A write is never replayed after an ambiguous failure — a replayed append would duplicate rows — and destructive tools are marked so your AI client can ask first.
 - **Sheets only.** Drive is an internal dependency for spreadsheet search and sharing alone; there is no generic Drive tool, and `raw_request` cannot reach Drive.
 - **Minimal Google scopes.** `spreadsheets` covers every Sheets tool; a Drive scope is needed only for spreadsheet search and sharing.
@@ -52,10 +53,10 @@ Start with a read-only question:
 
 ## Quick start
 
-You need Node.js 20+, a Google account and OAuth credentials from a Google Cloud project with the Google Sheets API enabled.
+You need Node.js 20+ and a Google account. Credentials are not required at install time — the server connects from the conversation.
 
-1. [Prepare Google OAuth access](#getting-access).
-2. Add the server to your AI app.
+1. Add the server to your AI app.
+2. Say "connect Google Sheets": the assistant walks you through [creating the OAuth client and approving access](#getting-access) without editing config files.
 3. Ask the read-only question above.
 
 <details open>
@@ -69,9 +70,6 @@ You need Node.js 20+, a Google account and OAuth credentials from a Google Cloud
 
 ```bash
 codex mcp add google-sheets \
-  --env GOOGLE_SHEETS_CLIENT_ID=your_client_id \
-  --env GOOGLE_SHEETS_CLIENT_SECRET=your_client_secret \
-  --env GOOGLE_SHEETS_REFRESH_TOKEN=your_refresh_token \
   -- npx -y @a1-x-tech/mcp-google-sheets@latest
 ```
 
@@ -90,9 +88,6 @@ codex mcp list
 
 ```bash
 claude mcp add \
-  --env GOOGLE_SHEETS_CLIENT_ID=your_client_id \
-  --env GOOGLE_SHEETS_CLIENT_SECRET=your_client_secret \
-  --env GOOGLE_SHEETS_REFRESH_TOKEN=your_refresh_token \
   --transport stdio --scope user google-sheets \
   -- npx -y @a1-x-tech/mcp-google-sheets@latest
 ```
@@ -119,12 +114,7 @@ This repository currently publishes an npm stdio package and does not contain a 
   "mcpServers": {
     "google-sheets": {
       "command": "npx",
-      "args": ["-y", "@a1-x-tech/mcp-google-sheets@latest"],
-      "env": {
-        "GOOGLE_SHEETS_CLIENT_ID": "your_client_id",
-        "GOOGLE_SHEETS_CLIENT_SECRET": "your_client_secret",
-        "GOOGLE_SHEETS_REFRESH_TOKEN": "your_refresh_token"
-      }
+      "args": ["-y", "@a1-x-tech/mcp-google-sheets@latest"]
     }
   }
 }
@@ -149,12 +139,7 @@ Add this to `~/.cursor/mcp.json` on macOS/Linux or `%USERPROFILE%\.cursor\mcp.js
     "google-sheets": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@a1-x-tech/mcp-google-sheets@latest"],
-      "env": {
-        "GOOGLE_SHEETS_CLIENT_ID": "your_client_id",
-        "GOOGLE_SHEETS_CLIENT_SECRET": "your_client_secret",
-        "GOOGLE_SHEETS_REFRESH_TOKEN": "your_refresh_token"
-      }
+      "args": ["-y", "@a1-x-tech/mcp-google-sheets@latest"]
     }
   }
 }
@@ -177,19 +162,9 @@ Run **MCP: Open User Configuration** and add:
     "google-sheets": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@a1-x-tech/mcp-google-sheets@latest"],
-      "env": {
-        "GOOGLE_SHEETS_CLIENT_ID": "${input:sheets_client_id}",
-        "GOOGLE_SHEETS_CLIENT_SECRET": "${input:sheets_client_secret}",
-        "GOOGLE_SHEETS_REFRESH_TOKEN": "${input:sheets_refresh_token}"
-      }
+      "args": ["-y", "@a1-x-tech/mcp-google-sheets@latest"]
     }
-  },
-  "inputs": [
-    { "type": "promptString", "id": "sheets_client_id", "description": "Google OAuth client ID" },
-    { "type": "promptString", "id": "sheets_client_secret", "description": "Google OAuth client secret", "password": true },
-    { "type": "promptString", "id": "sheets_refresh_token", "description": "Google OAuth refresh token", "password": true }
-  ]
+  }
 }
 ```
 
@@ -251,7 +226,20 @@ The AI client controls confirmation prompts. The server marks reads, writes and 
 
 ## Getting access
 
-Google Sheets requires OAuth 2.0 to edit spreadsheets; an API key is not enough.
+Google Sheets requires OAuth 2.0; an API key is not enough. There are two ways in, and the first one needs no configuration files.
+
+### Connect from the chat (recommended)
+
+Say "connect Google Sheets" and the assistant runs the flow with you:
+
+1. `setup_instructions` prints the checklist: create or select a Google Cloud project, enable **Google Sheets API**, configure the consent screen and create a **Desktop app** OAuth client.
+2. Download that client's JSON ("Download JSON") and give the assistant its **path** — `set_client` stores it owner-only. The secret never goes through the conversation.
+3. `start_login` returns a Google consent link. Open it **on this machine** and approve; the code comes back to a one-shot listener on `127.0.0.1` (PKCE), never through the chat.
+4. `finish_login` exchanges the code and saves the tokens to `~/.config/mcp-google-sheets/credentials.json` (mode 0600).
+
+The tokens are re-read on every call, so the connection works immediately — no restart of the AI app. `auth_status` shows what is connected, `logout` revokes and deletes it.
+
+### Environment variables (CI, unattended installs)
 
 1. Create or select a Google Cloud project and enable the **Google Sheets API**. Also enable the **Google Drive API** if you want spreadsheet search and sharing.
 2. Configure the OAuth consent screen and create a **Desktop app** OAuth client.
@@ -268,12 +256,15 @@ Testing-mode OAuth refresh tokens can expire after seven days. Publish the OAuth
 
 ## Configuration
 
+Every variable is optional — with none of them the server connects [from the chat](#connect-from-the-chat-recommended).
+
 | Variable | Required | Description |
 |---|---|---|
-| `GOOGLE_SHEETS_CLIENT_ID` | Yes* | OAuth client ID. |
-| `GOOGLE_SHEETS_CLIENT_SECRET` | Yes* | OAuth client secret. |
-| `GOOGLE_SHEETS_REFRESH_TOKEN` | Yes* | OAuth refresh token. |
-| `GOOGLE_SHEETS_ACCESS_TOKEN` | Yes* | Short-lived (~1 h) alternative to the OAuth trio. |
+| `GOOGLE_SHEETS_CLIENT_ID` | No* | OAuth client ID. |
+| `GOOGLE_SHEETS_CLIENT_SECRET` | No* | OAuth client secret. |
+| `GOOGLE_SHEETS_REFRESH_TOKEN` | No* | OAuth refresh token. |
+| `GOOGLE_SHEETS_ACCESS_TOKEN` | No* | Short-lived (~1 h) alternative to the OAuth trio. |
+| `GOOGLE_SHEETS_OAUTH_PORT` | No | Fixed loopback port for the in-chat login; useful over SSH port forwarding. |
 | `GOOGLE_SHEETS_API_BASE` | No | Google Sheets API base URL override. |
 | `GOOGLE_SHEETS_TIMEOUT_MS` | No | Per-request timeout; default `60000` ms. |
 | `GOOGLE_SHEETS_MAX_RETRIES` | No | Temporary-error retries; default `3`. |

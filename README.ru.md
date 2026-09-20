@@ -11,7 +11,8 @@
 
 Сервер работает с Google Sheets API через ваш Google-аккаунт. Он разделяет чтение и запись, явно помечает разрушительные операции и честно показывает ограничения Sheets API, а не создаёт впечатление, что с таблицей можно сделать всё.
 
-- **20 инструментов.** Поиск и создание таблиц, чтение и запись диапазонов, управление листами, форматированием, проверкой данных, защищёнными диапазонами, условным форматированием, структурированными таблицами, диаграммами и доступом.
+- **26 инструментов.** Поиск и создание таблиц, чтение и запись диапазонов, управление листами, форматированием, проверкой данных, защищёнными диапазонами, условным форматированием, структурированными таблицами, диаграммами и доступом.
+- **Подключение из диалога.** Скажите «подключи Google Таблицы»: сервер проведёт через создание OAuth-клиента, поймает редирект Google на `127.0.0.1` с PKCE и сам сохранит токены — без конфигов и перезапуска.
 - **Осознанная запись.** Запись никогда не повторяется после неопределённой ошибки — повтор `append` продублировал бы строки, — а разрушительные инструменты помечены, чтобы AI-клиент мог сначала спросить.
 - **Только Sheets.** Drive — внутренняя зависимость лишь для поиска таблиц и управления доступом; отдельного Drive-инструмента нет, и `raw_request` до Drive не дотягивается.
 - **Минимальные scope Google.** `spreadsheets` покрывает каждый Sheets-инструмент; scope Drive нужен только для поиска таблиц и управления доступом.
@@ -52,10 +53,10 @@
 
 ## Быстрый старт
 
-Нужны Node.js 20+, Google-аккаунт и OAuth-данные из проекта Google Cloud с включённым Google Sheets API.
+Нужны Node.js 20+ и Google-аккаунт. Учётные данные при установке не нужны: сервер подключается прямо в диалоге.
 
-1. [Подготовьте Google OAuth-доступ](#как-получить-доступ).
-2. Добавьте сервер в AI-приложение.
+1. Добавьте сервер в AI-приложение.
+2. Скажите «подключи Google Таблицы» — ассистент проведёт [создание OAuth-клиента и выдачу доступа](#как-получить-доступ), не трогая конфиги.
 3. Отправьте запрос, который только читает данные.
 
 <details open>
@@ -69,9 +70,6 @@
 
 ```bash
 codex mcp add google-sheets \
-  --env GOOGLE_SHEETS_CLIENT_ID=your_client_id \
-  --env GOOGLE_SHEETS_CLIENT_SECRET=your_client_secret \
-  --env GOOGLE_SHEETS_REFRESH_TOKEN=your_refresh_token \
   -- npx -y @a1-x-tech/mcp-google-sheets@latest
 ```
 
@@ -90,9 +88,6 @@ codex mcp list
 
 ```bash
 claude mcp add \
-  --env GOOGLE_SHEETS_CLIENT_ID=your_client_id \
-  --env GOOGLE_SHEETS_CLIENT_SECRET=your_client_secret \
-  --env GOOGLE_SHEETS_REFRESH_TOKEN=your_refresh_token \
   --transport stdio --scope user google-sheets \
   -- npx -y @a1-x-tech/mcp-google-sheets@latest
 ```
@@ -119,12 +114,7 @@ claude mcp list
   "mcpServers": {
     "google-sheets": {
       "command": "npx",
-      "args": ["-y", "@a1-x-tech/mcp-google-sheets@latest"],
-      "env": {
-        "GOOGLE_SHEETS_CLIENT_ID": "your_client_id",
-        "GOOGLE_SHEETS_CLIENT_SECRET": "your_client_secret",
-        "GOOGLE_SHEETS_REFRESH_TOKEN": "your_refresh_token"
-      }
+      "args": ["-y", "@a1-x-tech/mcp-google-sheets@latest"]
     }
   }
 }
@@ -149,12 +139,7 @@ claude mcp list
     "google-sheets": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@a1-x-tech/mcp-google-sheets@latest"],
-      "env": {
-        "GOOGLE_SHEETS_CLIENT_ID": "your_client_id",
-        "GOOGLE_SHEETS_CLIENT_SECRET": "your_client_secret",
-        "GOOGLE_SHEETS_REFRESH_TOKEN": "your_refresh_token"
-      }
+      "args": ["-y", "@a1-x-tech/mcp-google-sheets@latest"]
     }
   }
 }
@@ -177,19 +162,9 @@ claude mcp list
     "google-sheets": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@a1-x-tech/mcp-google-sheets@latest"],
-      "env": {
-        "GOOGLE_SHEETS_CLIENT_ID": "${input:sheets_client_id}",
-        "GOOGLE_SHEETS_CLIENT_SECRET": "${input:sheets_client_secret}",
-        "GOOGLE_SHEETS_REFRESH_TOKEN": "${input:sheets_refresh_token}"
-      }
+      "args": ["-y", "@a1-x-tech/mcp-google-sheets@latest"]
     }
-  },
-  "inputs": [
-    { "type": "promptString", "id": "sheets_client_id", "description": "Google OAuth client ID" },
-    { "type": "promptString", "id": "sheets_client_secret", "description": "Google OAuth client secret", "password": true },
-    { "type": "promptString", "id": "sheets_refresh_token", "description": "Google OAuth refresh token", "password": true }
-  ]
+  }
 }
 ```
 
@@ -251,7 +226,20 @@ claude mcp list
 
 ## Как получить доступ
 
-Для редактирования таблиц Google Sheets требует OAuth 2.0: одного API-ключа недостаточно.
+Google Sheets требует OAuth 2.0: одного API-ключа недостаточно. Путей два, и первый не требует править конфигурационные файлы.
+
+### Подключение из диалога (рекомендуемый путь)
+
+Скажите «подключи Google Таблицы», и ассистент пройдёт флоу вместе с вами:
+
+1. `setup_instructions` выдаёт чек-лист: создать или выбрать проект Google Cloud, включить **Google Sheets API**, настроить consent screen и создать OAuth-клиент типа **Desktop app**.
+2. Скачайте JSON этого клиента («Download JSON») и передайте ассистенту **путь** к файлу — `set_client` сохранит его с правами только для владельца. Секрет через переписку не проходит.
+3. `start_login` возвращает ссылку на согласие Google. Откройте её **на этой же машине** и подтвердите доступ: код возвращается на одноразовый слушатель `127.0.0.1` (PKCE), а не в чат.
+4. `finish_login` меняет код на токены и кладёт их в `~/.config/mcp-google-sheets/credentials.json` (права 0600).
+
+Токены перечитываются на каждый вызов, поэтому подключение действует немедленно — перезапускать AI-приложение не нужно. `auth_status` показывает состояние, `logout` отзывает токен и удаляет его.
+
+### Переменные окружения (CI и автоматические установки)
 
 1. Создайте или выберите проект Google Cloud и включите **Google Sheets API**. Включите также **Google Drive API**, если нужны поиск таблиц и управление доступом.
 2. Настройте OAuth consent screen и создайте OAuth-клиент типа **Desktop app**.
@@ -268,12 +256,15 @@ Refresh token OAuth-приложения в режиме Testing может ис
 
 ## Конфигурация
 
+Все переменные необязательные — без единой из них сервер подключается [из диалога](#подключение-из-диалога-рекомендуемый-путь).
+
 | Переменная | Обязательна | Описание |
 |---|---|---|
-| `GOOGLE_SHEETS_CLIENT_ID` | Да* | OAuth client ID. |
-| `GOOGLE_SHEETS_CLIENT_SECRET` | Да* | OAuth client secret. |
-| `GOOGLE_SHEETS_REFRESH_TOKEN` | Да* | OAuth refresh token. |
-| `GOOGLE_SHEETS_ACCESS_TOKEN` | Да* | Короткоживущая (~1 ч) альтернатива OAuth-тройке. |
+| `GOOGLE_SHEETS_CLIENT_ID` | Нет* | OAuth client ID. |
+| `GOOGLE_SHEETS_CLIENT_SECRET` | Нет* | OAuth client secret. |
+| `GOOGLE_SHEETS_REFRESH_TOKEN` | Нет* | OAuth refresh token. |
+| `GOOGLE_SHEETS_ACCESS_TOKEN` | Нет* | Короткоживущая (~1 ч) альтернатива OAuth-тройке. |
+| `GOOGLE_SHEETS_OAUTH_PORT` | Нет | Фиксированный порт loopback-слушателя для входа из диалога; нужен при пробросе портов по SSH. |
 | `GOOGLE_SHEETS_API_BASE` | Нет | Переопределяет базовый URL Google Sheets API. |
 | `GOOGLE_SHEETS_TIMEOUT_MS` | Нет | Тайм-аут одного запроса; по умолчанию `60000` мс. |
 | `GOOGLE_SHEETS_MAX_RETRIES` | Нет | Повторы временных ошибок; по умолчанию `3`. |

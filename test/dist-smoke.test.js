@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -14,14 +17,23 @@ import { registerRuleTools } from "../dist/tools/rules.js";
 import { registerObjectTools } from "../dist/tools/objects.js";
 import { registerSharingTools } from "../dist/tools/sharing.js";
 import { registerRawTool } from "../dist/tools/raw.js";
+import { registerAuthTools } from "../dist/tools/auth.js";
 
+/**
+ * Sorted, because every assertion compares it against a sorted tool list. The
+ * six onboarding tools come from @a1-x-tech/mcp-google-auth, so this list is
+ * also the check that the component is wired into the published binary.
+ */
 const ALL_TOOLS = [
   "append_values",
+  "auth_status",
   "batch_write_values",
   "clear_values",
   "create_spreadsheet",
+  "finish_login",
   "format_cells",
   "get_spreadsheet",
+  "logout",
   "manage_charts",
   "manage_conditional_formats",
   "manage_dimensions",
@@ -33,10 +45,26 @@ const ALL_TOOLS = [
   "read_values",
   "search_spreadsheets",
   "set_borders",
+  "set_client",
   "set_data_validation",
   "set_frozen",
+  "setup_instructions",
+  "start_login",
   "write_values",
 ];
+
+/**
+ * A throwaway $XDG_CONFIG_HOME for the spawned server. The auth component
+ * re-reads $XDG_CONFIG_HOME/mcp-google-sheets/credentials.json per call, so
+ * without this a real login on the developer's machine would make the
+ * "unconfigured" case pass for the wrong reason.
+ */
+function isolatedConfigDir(t) {
+  const dir = mkdtempSync(join(tmpdir(), "mcp-sheets-dist-smoke-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  return dir;
+}
+
 
 test("dist client rejects foreign-origin paths before sending the Bearer token", async () => {
   const original = globalThis.fetch;
@@ -91,6 +119,7 @@ test("dist registers the expected tools", () => {
   };
   const client = {};
 
+  registerAuthTools(server, client);
   registerSpreadsheetTools(server, client);
   registerValueTools(server, client);
   registerSheetTools(server, client);
@@ -103,13 +132,14 @@ test("dist registers the expected tools", () => {
   assert.deepEqual(names.sort(), ALL_TOOLS);
 });
 
-test("dist binary completes a real MCP handshake over stdio and lists every tool", async () => {
+test("dist binary completes a real MCP handshake over stdio and lists every tool", async (t) => {
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: [fileURLToPath(new URL("../dist/index.js", import.meta.url))],
     env: {
       ...process.env,
       GOOGLE_SHEETS_ACCESS_TOKEN: "test-token",
+      XDG_CONFIG_HOME: isolatedConfigDir(t),
       ASKADS_TELEMETRY: "0", // keep the suite offline
     },
     stderr: "pipe",
@@ -145,13 +175,14 @@ test("dist binary completes a real MCP handshake over stdio and lists every tool
  * answer a tool call with the actionable error — offline: the CredentialsError
  * fires before any fetch, so this test never touches the network.
  */
-test("dist binary starts without credentials: handshake, tool list, actionable call error", async () => {
+test("dist binary starts without credentials: handshake, tool list, actionable call error", async (t) => {
   const env = Object.fromEntries(
     Object.entries(process.env).filter(
       ([key, value]) => value !== undefined && !key.startsWith("GOOGLE_SHEETS_"),
     ),
   );
   env.ASKADS_TELEMETRY = "0"; // keep the suite offline
+  env.XDG_CONFIG_HOME = isolatedConfigDir(t); // ignore any real login on this machine
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: [fileURLToPath(new URL("../dist/index.js", import.meta.url))],
@@ -163,7 +194,8 @@ test("dist binary starts without credentials: handshake, tool list, actionable c
   try {
     // The model must read the fix before it picks a tool.
     const instructions = client.getInstructions() ?? "";
-    assert.match(instructions, /not connected/);
+    assert.match(instructions, /NOT CONNECTED/);
+    assert.match(instructions, /start_login/);
     assert.match(instructions, /GOOGLE_SHEETS_CLIENT_ID/);
     assert.match(instructions, /restart/);
 
@@ -177,7 +209,8 @@ test("dist binary starts without credentials: handshake, tool list, actionable c
     });
     assert.equal(result.isError, true);
     const text = result.content.map((c) => c.text ?? "").join(" ");
-    assert.match(text, /Google OAuth credentials are required: set GOOGLE_SHEETS_CLIENT_ID/);
+    assert.match(text, /not connected/i);
+    assert.match(text, /start_login/);
     assert.match(text, /restart the server/);
   } finally {
     await client.close();
