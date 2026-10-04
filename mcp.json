@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "google-sheets": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@a1-x-tech/mcp-google-sheets@latest"
+      ]
+    }
+  }
+}
