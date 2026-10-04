@@ -1,0 +1,24 @@
+{
+  "name": "mcp-google-sheets",
+  "displayName": "A1 Google Sheets MCP",
+  "description": "MCP server for the Google Sheets API — search spreadsheets, read and write ranges, manage sheets, formatting, validation, protected ranges, tables, charts and sharing. For Claude, Cursor, Codex and ot",
+  "author": {
+    "name": "Aleksandr Kovalko & Zinnur Temerbekov"
+  },
+  "homepage": "https://github.com/A1-x-Tech/mcp-google-sheets#readme",
+  "repository": "https://github.com/A1-x-Tech/mcp-google-sheets",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "google",
+    "google-sheets",
+    "sheets",
+    "spreadsheet",
+    "excel",
+    "claude",
+    "cursor",
+    "codex"
+  ],
+  "logo": "assets/a1-logo.svg"
+}
