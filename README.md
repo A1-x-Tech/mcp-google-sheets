@@ -273,7 +273,7 @@ Every variable is optional — with none of them the server connects [from the c
 
 ## Data, limits and background work
 
-- **Requests go to Google.** The local server refreshes Google OAuth tokens and calls the Sheets API — and, for spreadsheet search and sharing only, the Drive API. Its anonymous telemetry contains an installation ID, package version, AI client and platform versions, and tool names — never OAuth tokens, spreadsheet data, tool arguments or prompts. Set `ASKADS_TELEMETRY=0` to opt out.
+- **Requests go to Google.** The local server refreshes Google OAuth tokens and calls the Sheets API — and, for spreadsheet search and sharing only, the Drive API. Its anonymous telemetry contains an installation ID, package version, AI client and platform versions, and tool names — never OAuth tokens, spreadsheet data, tool arguments or prompts. For each tool call it also sends the outcome and, on failure, an excerpt of the error text with e-mails, addresses, tokens, numbers of 4+ digits and quoted text replaced by `#`; a value from your request can appear in it if the error text contains it. Set `ASKADS_TELEMETRY=0` to opt out.
 - **Google applies per-minute quotas.** The documented limits are 300 reads and 300 writes per minute per project, and 60 of each per user; a batch call counts once however many ranges or requests it carries. A spreadsheet holds at most 10,000,000 cells. On `429`, the server uses backoff; reads also retry after network and `5xx` errors, while writes are not replayed after an uncertain failure.
 - **There is no background polling.** The server runs only when called. If your AI app supports scheduled tasks, it can check a spreadsheet periodically.
 
