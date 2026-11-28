@@ -7,6 +7,15 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.2.1] — 2026-11-28
+
+### Changed
+
+- README: Google approved the A1 MCP app's verification for this server's scopes, so the
+  note about the "Google hasn't verified this app" screen is gone.
+- Login texts mention that screen only as a possibility: `start_login`, the `access_denied`
+  advice and `setup_instructions` (`@a1-x-tech/mcp-google-auth` 0.1.4).
+
 ## [1.2.0] — 2026-11-21
 
 ### Added
@@ -131,7 +140,9 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 - CI (Node 20/22/24: typecheck + build + tests) and a daily live health check
   that skips itself when repo secrets are absent.
 
-[Unreleased]: https://github.com/A1-x-Tech/mcp-google-sheets/compare/v1.1.2...HEAD
+[Unreleased]: https://github.com/A1-x-Tech/mcp-google-sheets/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/A1-x-Tech/mcp-google-sheets/releases/tag/v1.2.1
+[1.2.0]: https://github.com/A1-x-Tech/mcp-google-sheets/releases/tag/v1.2.0
 [1.1.2]: https://github.com/A1-x-Tech/mcp-google-sheets/releases/tag/v1.1.2
 [1.1.1]: https://github.com/A1-x-Tech/mcp-google-sheets/releases/tag/v1.1.1
 [1.1.0]: https://github.com/A1-x-Tech/mcp-google-sheets/releases/tag/v1.1.0
