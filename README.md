@@ -235,7 +235,7 @@ Say "connect Google Sheets". The server ships with a built-in OAuth client, so t
 1. `start_login` returns a Google consent link. Open it **on this machine** and approve; the code comes back to a one-shot listener on `127.0.0.1` (PKCE), never through the chat.
 2. `finish_login` exchanges the code and saves the tokens to `~/.config/mcp-google-sheets/credentials.json` (mode 0600).
 
-Google may show a **"Google hasn't verified this app"** screen while the app's verification is in progress: choose **Advanced → Go to A1 MCP**. The built-in client only identifies the app to Google — the tokens are issued to and stored on your machine, and A1 never receives them.
+Google has verified the A1 MCP app, so sign-in goes straight to the consent screen with no unverified-app warning. The built-in client only identifies the app to Google — the tokens are issued to and stored on your machine, and A1 never receives them.
 
 #### Use your own OAuth client
 
